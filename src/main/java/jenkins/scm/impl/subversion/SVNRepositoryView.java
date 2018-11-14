@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,7 +61,7 @@ public class SVNRepositoryView {
     private static final Logger LOGGER = Logger.getLogger(SVNRepositoryView.class.getName());
     private final DB cache;
     private final SVNRepository repository;
-    private final ConcurrentMap<String, NodeEntry> data;
+    private final Map<String, NodeEntry> data;
     private final String uuid;
 
     public SVNRepositoryView(SVNURL repoURL, StandardCredentials credentials) throws SVNException, IOException {
@@ -100,9 +101,7 @@ public class SVNRepositoryView {
             int count = 0;
             while (cache == null) {
                 try {
-                    cache = DBMaker.newFileDB(cacheFile)
-                            .cacheWeakRefEnable()
-                            .make();
+                    cache = DBMaker.fileDB(cacheFile).make();
                 } catch (Throwable t) { // this library seems to have nonstandard exception handling
                     cacheFile.delete();
                     LOGGER.log(Level.WARNING, "failing to make/load " + cacheFile, t);
@@ -112,7 +111,8 @@ public class SVNRepositoryView {
                 }
             }
             this.cache = cache;
-            this.data = this.cache.getHashMap(credentials == null ? "data" : "data-" + credentials.getId());
+            this.data = (Map<String, NodeEntry>) this.cache.hashMap(credentials == null ? "data" :
+                                                              "data-" + credentials.getId()).createOrOpen();
             cache.commit();
             success = true;
         } finally {
